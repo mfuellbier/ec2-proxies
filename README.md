@@ -5,7 +5,7 @@ This script uses default AWS credentials to run a specified number of EC2 instan
 
 As default t2.micro instances will be ran since these are included in the free tier of AWS.
 
-An SSH keyset must be created in the AWS management console and saved locally in `~/.ssh`. The name of the SSH key must be refered by the argumen `-k`. All other arguments are optional.
+An SSH keyset must be created in the AWS management console and saved locally in `~/.ssh`. The name of the SSH key must be refered by the argument `-k`. All other arguments are optional.
 
 `aws-proxies.py start -k name-ssh` starts one t2.micro instance, connects to it via SSH and opens a SOCKS proxy on Port 9000.
 
