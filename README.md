@@ -9,7 +9,7 @@ An SSH keyset must be created in the AWS management console and saved locally in
 
 `aws-proxies.py start -k name-ssh` starts one t2.micro instance, connects to it via SSH and opens a SOCKS proxy on Port 9000.
 
-`aws-proxies.py status` shows all running EC2 Instances, its InstnaceID, PublicIP, GroupID and SOCKS proxy port.
+`aws-proxies.py status` shows all running EC2 Instances, its State, InstanceID, PublicIP, GroupID and SOCKS proxy port.
 
 `aws-proxies.py ssh -k name-ssh` connects via SSH and opens a SOCKS proxy to all EC2 instances, to which no SSH tunnel exists yet.
 
