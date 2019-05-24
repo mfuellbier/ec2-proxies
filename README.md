@@ -1,7 +1,7 @@
 # ec2-proxies
 Use EC2 instances as SOCKS proxies.
 
-This script uses default AWS credentials to run a specified number of EC2 onstances and opens local SOCKS proxy ports which tunnel the the traffic though SSH to the EC2 instances.
+This script uses default AWS credentials to run a specified number of EC2 instances and opens local SOCKS proxy ports which tunnel the the traffic though SSH to the EC2 instances.
 
 As default t2.micro instances will be ran since these are included in the free tier of AWS.
 
