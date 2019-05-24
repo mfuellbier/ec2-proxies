@@ -252,16 +252,16 @@ if __name__ == '__main__':
         help="pass command to the program: start, stop, status, ssh",
         metavar="COMMAND")
     parser.add_argument(
-        "-c",
-        dest="number",
-        help="number of instances to be ran (default: 1)",
-        default=1,
-        action="store")
-    parser.add_argument(
         "-k",
         "--keyname",
         dest="keyname",
         help="SSH Key-Name",
+        action="store")
+    parser.add_argument(
+        "-c",
+        dest="number",
+        help="number of instances to be ran (default: 1)",
+        default=1,
         action="store")
     parser.add_argument(
         "-t",
@@ -288,7 +288,7 @@ if __name__ == '__main__':
         "-s",
         "--cidr",
         dest="cidr",
-        help="IPv4 address range in CIDR fromat from which to allow connections to port 22.",
+        help="IPv4 address range in CIDR fromat from which to allow connections to port 22. (Default: 0.0.0.0)",
         default="0.0.0.0/0",
         action="store")
     parser.add_argument(
