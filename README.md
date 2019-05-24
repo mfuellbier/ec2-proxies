@@ -14,19 +14,19 @@ AWS API keys with privileges to run and terminate EC2 instances must be saved in
 
 ## Description
 
-`aws-proxies.py start -k name-ssh` starts one t2.micro instance, connects to it via SSH and opens a SOCKS proxy on Port 9000.
+`ec2-proxy.py start -k name-ssh` starts one t2.micro instance, connects to it via SSH and opens a SOCKS proxy on Port 9000.
 
-`aws-proxies.py status` shows all running EC2 Instances, its State, InstanceID, PublicIP, GroupID and SOCKS proxy port.
+`ec2-proxy.py status` shows all running EC2 Instances, its State, InstanceID, PublicIP, GroupID and SOCKS proxy port.
 
-`aws-proxies.py ssh -k name-ssh` connects via SSH and opens a SOCKS proxy to all EC2 instances, to which no SSH tunnel exists yet.
+`ec2-proxy.py ssh -k name-ssh` connects via SSH and opens a SOCKS proxy to all EC2 instances, to which no SSH tunnel exists yet.
 
-`aws-proxies.py stop` terminates all running EC2 instances - also those not started with this script!
+`ec2-proxy.py stop` terminates all running EC2 instances - also those not started with this script!
 
 ```
-$ aws-proxies.py -h
-usage: aws-proxies.py [-h] [-c NUMBER] [-k KEYNAME] [-t INSTANCETYPE]
-                      [-i IMAGEID] [-p PORT] [-s CIDR] [-v] [--dryrun]
-                      COMMAND
+$ ec2-proxy.py -h
+usage: ec2-proxy.py [-h] [-k KEYNAME] [-c NUMBER] [-t INSTANCETYPE]
+                    [-i IMAGEID] [-p PORT] [-s CIDR] [-v] [--dryrun]
+                    COMMAND
 
 Runs EC2 instances and opens SSH tunnel to it.
 
