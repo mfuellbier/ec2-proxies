@@ -46,7 +46,9 @@ optional arguments:
                         being launched, port will be incremented. (default:
                         9000)
   -s CIDR, --cidr CIDR  IPv4 address range in CIDR fromat from which to allow
-                        connections to port 22. (Default: 0.0.0.0)
+                        connections to port 22. (Default: 0.0.0.0/0)
+  -g GROUPNAME, --security-group-name GROUPNAME
+					    Security Group Name (Default: Proxy)
   -v, --verbose         increase output verbosity
   --dryrun              dry run API calls
   ```

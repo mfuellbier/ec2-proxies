@@ -12,7 +12,7 @@ import time
 def stop(args, loglevel, DRYRUN=False):
     ec2 = boto3.client('ec2')
     # logging.basicConfig(format="%(levelname)s: %(message)s", level=loglevel)
-    response = ec2.describe_instances(Filters=[{'Name': 'instance-state-name', 'Values': ['running']}])
+    response = ec2.describe_instances(Filters=[{'Name': 'instance-state-name', 'Values': ['running']}, {'Name': 'instance.group-name', 'Values': [args.groupname]}])
     try:
         reservations = response["Reservations"]
     except IndexError:
@@ -35,7 +35,7 @@ def stop(args, loglevel, DRYRUN=False):
 
     while not count_running_instances == 0:
         time.sleep(1)
-        response = ec2.describe_instances(Filters=[{'Name': 'instance-state-name', 'Values': ['shutting-down']}])
+        response = ec2.describe_instances(Filters=[{'Name': 'instance-state-name', 'Values': ['shutting-down']}, {'Name': 'instance.group-name', 'Values': [args.groupname]}])
         reservations = response["Reservations"]
         instances = [instance for reservation in reservations for instance in reservation["Instances"]]
         if len(instances) < count_running_instances:
@@ -52,10 +52,26 @@ def start(args, loglevel, DRYRUN=False):
         logging.error("Number of instances must be greater 0!")
         return 1
 
-    response = ec2.describe_instances(Filters=[{'Name': 'instance-state-name', 'Values': ['running']}])
+    response = ec2.describe_instances(Filters=[{'Name': 'instance-state-name', 'Values': ['running']}, {'Name': 'instance.group-name', 'Values': [args.groupname]}])
     reservations = response["Reservations"]
     instances = [instance for reservation in reservations for instance in reservation["Instances"]]
     count_running_instances = len(instances)
+
+    secgroup = ec2.describe_security_groups(Filters=[{'Name': 'group-name', 'Values': [args.groupname]}], DryRun=DRYRUN)
+    if secgroup['SecurityGroups'] == []:
+        print("Create Security Group " + args.groupname)
+        try:
+            ec2.create_security_group(GroupName=args.groupname, Description='Used for EC2 Proxies', DryRun=DRYRUN)
+        except (botocore.exceptions.ParamValidationError, botocore.exceptions.ClientError) as err:
+            logging.error("EC2 create security group failed!")
+            print(str(err))
+            return 1
+        try:
+            print("Authorize Security Groups: Open port 22 for " + args.cidr)
+            ec2.authorize_security_group_ingress(CidrIp=args.cidr, GroupName=args.groupname, IpProtocol="TCP", FromPort=22, ToPort=22, DryRun=DRYRUN)
+        except botocore.exceptions.ClientError as e:
+            print(e)
+            pass
 
     if instances == []:
         if args.number == 1:
@@ -74,7 +90,7 @@ def start(args, loglevel, DRYRUN=False):
             print(str(len(instances)) + " instances are already running. Run " + str(args.number) + " new instances...")
 
     try:
-        ec2.run_instances(ImageId=args.imageid, InstanceType=args.instancetype, KeyName=args.keyname, MaxCount=int(args.number), MinCount=int(args.number), DryRun=DRYRUN)
+        ec2.run_instances(ImageId=args.imageid, InstanceType=args.instancetype, KeyName=args.keyname, MaxCount=int(args.number), MinCount=int(args.number), DryRun=DRYRUN, SecurityGroups=[args.groupname])
     except (botocore.exceptions.ParamValidationError, botocore.exceptions.ClientError) as err:
         logging.error("EC2 run instance failed!")
         print(str(err))
@@ -83,11 +99,11 @@ def start(args, loglevel, DRYRUN=False):
     count_pending_instances = int(args.number)
     count_all_instances = count_running_instances + count_pending_instances
     while not count_pending_instances == 0:
-        response = ec2.describe_instances(Filters=[{'Name': 'instance-state-name', 'Values': ['pending']}])
+        response = ec2.describe_instances(Filters=[{'Name': 'instance-state-name', 'Values': ['pending']}, {'Name': 'instance.group-name', 'Values': [args.groupname]}])
         reservations = response["Reservations"]
         instances = [instance for reservation in reservations for instance in reservation["Instances"]]
         if count_pending_instances > len(instances):
-            response = ec2.describe_instances(Filters=[{'Name': 'instance-state-name', 'Values': ['running']}])
+            response = ec2.describe_instances(Filters=[{'Name': 'instance-state-name', 'Values': ['running']},{ 'Name': 'instance.group-name', 'Values': [args.groupname]}])
             reservations = response["Reservations"]
             running_instances = [instance for reservation in reservations for instance in reservation["Instances"]]
             count_running_instances = len(running_instances)
@@ -95,7 +111,6 @@ def start(args, loglevel, DRYRUN=False):
             count_pending_instances = len(instances)
         time.sleep(1)
     print("All Instances up.")
-    authorize_security_groups(args)
     ssh_up(args)
     status(args, loglevel)
 
@@ -103,14 +118,14 @@ def start(args, loglevel, DRYRUN=False):
 def status(args, loglevel, state=None):
     ec2 = boto3.client('ec2')
     if state:
-        response = ec2.describe_instances(Filters=[{'Name': 'instance-state-name', 'Values': [state]}])
+        response = ec2.describe_instances(Filters=[{'Name': 'instance-state-name', 'Values': [state]}, {'Name': 'instance.group-name', 'Values': [args.groupname]}])
     else:
-        response = ec2.describe_instances()
+        response = ec2.describe_instances(Filters=[{'Name': 'instance.group-name', 'Values': [args.groupname]}])
     # logging.basicConfig(format="%(levelname)s: %(message)s", level=loglevel)
     reservations = response["Reservations"]
     instances = [instance for reservation in reservations for instance in reservation["Instances"]]
 
-    print(" State ".ljust(len(" shutting-down ")) + "|" + " InstanceID ".ljust(len(" i-088807572db49585c ")) + "|" + " PublicIP ".ljust(len(" 123.123.123.123 ")) + "|" + " GroupId ".ljust(len(" sg-b4152fc4 ")) + "|" + " Port ".ljust(len("65535")))
+    print(" State ".ljust(len(" shutting-down ")) + "|" + " InstanceID ".ljust(len(" i-088807572db49585c ")) + "|" + " PublicIP ".ljust(len(" 123.123.123.123 ")) + "|" + " GroupeName ".ljust(len(" GroupName ")) + "|" + " Port ".ljust(len("65535")))
     print("-" * 76)
     ssh_ips = ssh_dict()
     for instance in instances:
@@ -123,17 +138,17 @@ def status(args, loglevel, state=None):
         except KeyError:
             port = [""]
         try:
-            groupid = instance["NetworkInterfaces"][0]["Groups"][0]["GroupId"]
+            groupid = instance["NetworkInterfaces"][0]["Groups"][0]["GroupName"]
         except (KeyError, IndexError):
             groupid = ""
-        print(" " + instance["State"]["Name"].ljust(len("shutting-down ")) + "| " + instance["InstanceId"] + " | " + instance_ip.ljust(len("123.123.123.123")) + " | " + groupid.ljust(len("sg-b4152fc4")) + " | " + port[0])
+        print(" " + instance["State"]["Name"].ljust(len("shutting-down ")) + "| " + instance["InstanceId"] + " | " + instance_ip.ljust(len("123.123.123.123")) + " | " + groupid.ljust(len("GroupName ")) + " | " + port[0])
 
 
 def ssh_up(args):
     print("Connect to EC2 instances for SSH tunnel...")
     ec2 = boto3.client('ec2')
     # logging.basicConfig(format="%(levelname)s: %(message)s", level=loglevel)
-    response = ec2.describe_instances(Filters=[{'Name': 'instance-state-name', 'Values': ['running']}])
+    response = ec2.describe_instances(Filters=[{'Name': 'instance-state-name', 'Values': ['running']}, {'Name': 'instance.group-name', 'Values': [args.groupname]}])
     try:
         reservations = response["Reservations"]
     except IndexError:
@@ -148,7 +163,7 @@ def ssh_up(args):
         while not return_code == 0:
             time.sleep(1)
             return_code = subprocess.call(["ssh", "-fND", port, "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeychecking=no", "-o", "IdentitiesOnly=yes", "ec2-user@" + ip, "-i", "~/.ssh/" + args.keyname + ".pem"])
-        print("Opened SOCKS proxy on port " + port + " for IP " + ip + ".")
+        print("Opening SOCKS proxy on port " + port + " for IP " + ip + ".")
         port = str(int(port) + 1)
     return 0
 
@@ -197,36 +212,6 @@ def ssh_dict():
             port = re.findall(pattern_port, command)
             ips[ip[0]] = [port[0]]
     return ips
-
-
-def security_groups(args):
-    ec2 = boto3.client('ec2')
-    response = ec2.describe_instances(Filters=[{'Name': 'instance-state-name', 'Values': ["running"]}])
-    # logging.basicConfig(format="%(levelname)s: %(message)s", level=loglevel)
-    reservations = response["Reservations"]
-    instanceids = [instance["InstanceId"] for reservation in reservations for instance in reservation["Instances"]]
-
-    GROUPIDS = set()
-    for instanceid in instanceids:
-        response = ec2.describe_instance_attribute(Attribute='groupSet', DryRun=args.dryrun, InstanceId=instanceid)
-        groupid = response["Groups"][0]["GroupId"]
-        GROUPIDS.add(groupid)
-
-    return GROUPIDS
-
-
-def authorize_security_groups(args):
-    # Authorize Security groups for connecting via port 22 from args.cidr
-    ec2 = boto3.client('ec2')
-    # logging.basicConfig(format="%(levelname)s: %(message)s", level=loglevel)
-    GROUPIDS = security_groups(args)
-    print("Authorize Security Groups: Open port 22 for " + args.cidr)
-    for groupid in GROUPIDS:
-        try:
-            ec2.authorize_security_group_ingress(CidrIp=args.cidr, GroupId=groupid, IpProtocol="TCP", FromPort=22, ToPort=22, DryRun=args.dryrun)
-        except botocore.exceptions.ClientError as e:
-            print(e)
-            pass
 
 
 def main(args, loglevel):
@@ -288,8 +273,15 @@ if __name__ == '__main__':
         "-s",
         "--cidr",
         dest="cidr",
-        help="IPv4 address range in CIDR fromat from which to allow connections to port 22. (Default: 0.0.0.0)",
+        help="IPv4 address range in CIDR fromat from which to allow connections to port 22. (Default: 0.0.0.0/0)",
         default="0.0.0.0/0",
+        action="store")
+    parser.add_argument(
+        "-g",
+        "--security-group-name",
+        dest="groupname",
+        help="Security Group Name (Default: Proxy)",
+        default="Proxy",
         action="store")
     parser.add_argument(
         "-v",
